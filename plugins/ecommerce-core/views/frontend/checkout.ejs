@@ -1,0 +1,183 @@
+<%- include('../../../../src/views/partials/header_frontend') %>
+
+    <div class="container mx-auto px-6 py-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-8">Checkout</h1>
+
+        <div class="flex flex-col md:flex-row gap-8">
+            <div class="w-full md:w-2/3">
+                <div class="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                    <div class="bg-gray-50 px-6 py-4 border-b">
+                        <h2 class="text-lg font-semibold text-gray-700">Billing Details</h2>
+                    </div>
+                    <div class="p-6">
+                        <% if (typeof user !=='undefined' && user) { %>
+                            <!-- Hidden Data Store for JS -->
+                            <div id="userDataStore" class="hidden" data-first-name="<%= user.firstName || '' %>"
+                                data-last-name="<%= user.lastName || '' %>" data-email="<%= user.email || '' %>"
+                                data-address="<%= user.address ? `${user.address.street || ''}\n${user.address.city || ''}, ${user.address.state || ''} ${user.address.zip || ''}`.trim() : '' %>">
+                            </div>
+
+                            <div
+                                class="mb-6 p-4 bg-indigo-50 rounded-lg border border-indigo-100 flex flex-col space-y-2">
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="useSavedInfo"
+                                        class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer">
+                                    <label for="useSavedInfo"
+                                        class="ml-3 text-sm font-medium text-indigo-900 cursor-pointer">
+                                        Use my saved profile information
+                                    </label>
+                                </div>
+                                <p id="savedInfoWarning" class="hidden text-xs text-amber-600 mt-1">
+                                    <i class="bi bi-exclamation-triangle-fill mr-1"></i>
+                                    Some profile details appear to be missing. Please complete your profile for faster
+                                    checkout.
+                                </p>
+                            </div>
+                            <% } %>
+
+                                <form action="/checkout" method="POST" id="checkoutForm">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                                        <div>
+                                            <label for="firstName"
+                                                class="block text-sm font-medium text-gray-700 mb-1">First
+                                                Name</label>
+                                            <input type="text"
+                                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                                                id="firstName" name="firstName" required
+                                                style="border: 1px solid #d1d5db; padding: 0.5rem;">
+                                        </div>
+                                        <div>
+                                            <label for="lastName"
+                                                class="block text-sm font-medium text-gray-700 mb-1">Last
+                                                Name</label>
+                                            <input type="text"
+                                                class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                                                id="lastName" name="lastName" required
+                                                style="border: 1px solid #d1d5db; padding: 0.5rem;">
+                                        </div>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label for="email"
+                                            class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                        <input type="email"
+                                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                                            id="email" name="email" required
+                                            style="border: 1px solid #d1d5db; padding: 0.5rem;">
+                                    </div>
+                                    <div class="mb-6">
+                                        <label for="address"
+                                            class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                                        <textarea
+                                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                                            id="address" name="address" rows="3" required
+                                            style="border: 1px solid #d1d5db; padding: 0.5rem;"></textarea>
+                                    </div>
+
+                                    <hr class="border-gray-200 my-6">
+
+                                    <h3 class="text-lg font-semibold text-gray-700 mb-4">Payment</h3>
+                                    <div class="flex items-center mb-6">
+                                        <input id="cod" name="paymentMethod" type="radio"
+                                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                                            value="cod" checked>
+                                        <label for="cod" class="ml-2 block text-sm text-gray-900">
+                                            Cash on Delivery
+                                        </label>
+                                    </div>
+                                    <!-- Add more payment methods here later -->
+
+                                    <hr class="border-gray-200 my-6">
+
+                                    <button
+                                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg shadow transition duration-200"
+                                        type="submit">
+                                        Place Order
+                                    </button>
+                                </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="w-full md:w-1/3">
+                <div class="bg-white rounded-lg shadow-md overflow-hidden sticky top-6">
+                    <div class="bg-gray-50 px-6 py-4 border-b">
+                        <h2 class="text-lg font-semibold text-gray-700">Order Summary</h2>
+                    </div>
+                    <div class="p-6">
+                        <ul class="space-y-4 mb-4">
+                            <% cart.items.forEach(item=> { %>
+                                <li class="flex justify-between items-center text-sm">
+                                    <div>
+                                        <h6 class="font-medium text-gray-900">
+                                            <%= item.name %>
+                                        </h6>
+                                        <small class="text-gray-500">Qty: <%= item.quantity %></small>
+                                    </div>
+                                    <span class="text-gray-700 font-semibold">$<%= (item.price *
+                                            item.quantity).toFixed(2) %></span>
+                                </li>
+                                <% }); %>
+                        </ul>
+                        <div class="border-t border-gray-200 pt-4 flex justify-between items-center">
+                            <span class="font-bold text-gray-900">Total (USD)</span>
+                            <strong class="text-xl font-bold text-indigo-700">$<%= cart.total.toFixed(2) %></strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const useSavedInfo = document.getElementById('useSavedInfo');
+            const dataStore = document.getElementById('userDataStore');
+            const warning = document.getElementById('savedInfoWarning');
+
+            if (useSavedInfo && dataStore) {
+                const form = document.getElementById('checkoutForm');
+                const fields = ['firstName', 'lastName', 'email', 'address'];
+
+                const userData = {
+                    firstName: dataStore.getAttribute('data-first-name'),
+                    lastName: dataStore.getAttribute('data-last-name'),
+                    email: dataStore.getAttribute('data-email'),
+                    address: dataStore.getAttribute('data-address')
+                };
+
+                // Check if any required data is missing
+                const isDataIncomplete = !userData.firstName || !userData.lastName || !userData.email || !userData.address;
+
+                const originals = {};
+
+                useSavedInfo.addEventListener('change', function () {
+                    const isChecked = this.checked;
+
+                    if (isChecked && isDataIncomplete) {
+                        warning.classList.remove('hidden');
+                    } else {
+                        warning.classList.add('hidden');
+                    }
+
+                    fields.forEach(field => {
+                        const input = form[field];
+                        if (!input) return;
+
+                        if (isChecked) {
+                            originals[field] = input.value;
+                            input.value = userData[field] || '';
+                        } else {
+                            input.value = originals[field] || '';
+                        }
+
+                        // Trigger multiple events to satisfy different validation methods
+                        ['input', 'change', 'blur'].forEach(evtType => {
+                            input.dispatchEvent(new Event(evtType, { bubbles: true }));
+                        });
+                    });
+                });
+            }
+        });
+    </script>
+
+    <%- include('../../../../src/views/partials/footer_frontend') %>

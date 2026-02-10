@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StoreCMS Configuration</title>
+    <link href="/css/style.css" rel="stylesheet">
+</head>
+
+<body class="bg-gray-100 flex items-center justify-center min-h-screen py-10">
+
+    <div class="w-full max-w-2xl bg-white rounded-lg shadow-xl p-8">
+        <h2 class="text-2xl font-bold text-center text-indigo-600 mb-2">System Configuration</h2>
+        <p class="text-center text-gray-500 mb-8">Configure your environment settings.</p>
+
+        <% if (error) { %>
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
+                <span class="block sm:inline">
+                    <%= error %>
+                </span>
+            </div>
+            <% } %>
+
+                <form action="/setup/config" method="POST">
+                    <h5 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Database</h5>
+                    <div class="mb-4">
+                        <label for="MONGO_URI" class="block text-gray-700 text-sm font-bold mb-2">MongoDB Connection
+                            String</label>
+                        <input type="text"
+                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            id="MONGO_URI" name="MONGO_URI" required placeholder="mongodb://localhost:27017/storecms"
+                            value="<%= env.MONGO_URI || '' %>">
+                        <p class="text-gray-600 text-xs italic mt-1">Local or Atlas URI.</p>
+                    </div>
+
+                    <div class="border-t border-gray-200 my-6"></div>
+
+                    <h5 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Security</h5>
+                    <div class="mb-4">
+                        <label for="JWT_SECRET" class="block text-gray-700 text-sm font-bold mb-2">JWT Secret</label>
+                        <div class="flex">
+                            <input type="text"
+                                class="shadow appearance-none border rounded-l w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                id="JWT_SECRET" name="JWT_SECRET" required value="<%= env.JWT_SECRET || '' %>">
+                            <button
+                                class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-r focus:outline-none focus:shadow-outline border border-l-0"
+                                type="button" id="genSecret">Generate</button>
+                        </div>
+                        <p class="text-gray-600 text-xs italic mt-1">Used to sign session tokens. Keep this secret!</p>
+                    </div>
+
+                    <div class="border-t border-gray-200 my-6"></div>
+
+                    <h5 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Media (ImageKit)</h5>
+                    <div class="mb-4">
+                        <label for="IMAGEKIT_PUBLIC_KEY" class="block text-gray-700 text-sm font-bold mb-2">Public
+                            Key</label>
+                        <input type="text"
+                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            id="IMAGEKIT_PUBLIC_KEY" name="IMAGEKIT_PUBLIC_KEY"
+                            value="<%= env.IMAGEKIT_PUBLIC_KEY || '' %>">
+                    </div>
+                    <div class="mb-4">
+                        <label for="IMAGEKIT_PRIVATE_KEY" class="block text-gray-700 text-sm font-bold mb-2">Private
+                            Key</label>
+                        <input type="password"
+                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            id="IMAGEKIT_PRIVATE_KEY" name="IMAGEKIT_PRIVATE_KEY"
+                            value="<%= env.IMAGEKIT_PRIVATE_KEY || '' %>">
+                    </div>
+                    <div class="mb-6">
+                        <label for="IMAGEKIT_URL_ENDPOINT" class="block text-gray-700 text-sm font-bold mb-2">URL
+                            Endpoint</label>
+                        <input type="text"
+                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            id="IMAGEKIT_URL_ENDPOINT" name="IMAGEKIT_URL_ENDPOINT"
+                            value="<%= env.IMAGEKIT_URL_ENDPOINT || '' %>">
+                    </div>
+
+                    <button type="submit"
+                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition duration-200 text-lg">
+                        Save Configuration
+                    </button>
+                </form>
+    </div>
+
+    <script>
+        document.getElementById('genSecret').addEventListener('click', () => {
+            const secret = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+                .map(b => b.toString(16).padStart(2, '0')).join('');
+            document.getElementById('JWT_SECRET').value = secret;
+        });
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,6 @@
+{
+    "name": "ecommerce-core",
+    "version": "1.0.0",
+    "description": "Core E-commerce functionality: Products and Orders.",
+    "main": "index.js"
+}

@@ -1,0 +1,70 @@
+<%- include('../../../../src/views/partials/header') %>
+
+    <div class="flex justify-between items-center pb-4 mb-4 border-b border-gray-200">
+        <h1 class="text-2xl font-bold text-gray-800">Products</h1>
+        <a href="/admin/ecommerce/products/create"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded inline-flex items-center transition duration-200">
+            <i class="bi bi-plus-lg mr-2"></i> Add Product
+        </a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image
+                    </th>
+                    <th scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price
+                    </th>
+                    <th scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Description</th>
+                    <th scope="col"
+                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                <% products.forEach(product=> { %>
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <% if(product.image) { %>
+                                <img src="<%= product.image %>" alt="<%= product.name %>" class="h-10 w-auto rounded">
+                                <% } else { %>
+                                    <span class="text-gray-400 text-sm italic">No Image</span>
+                                    <% } %>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <%= product.name %>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            $<%= product.price %>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                            <%= product.description.substring(0, 50) %>...
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <a href="/admin/ecommerce/products/edit/<%= product._id %>"
+                                class="text-indigo-600 hover:text-indigo-900 mr-2">Edit</a>
+                            <form action="/admin/ecommerce/products/delete/<%= product._id %>" method="POST"
+                                onsubmit="return confirm('Are you sure you want to delete this product?');"
+                                class="inline-block">
+                                <button type="submit" class="text-red-600 hover:text-red-900">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <% }); %>
+                        <% if (products.length===0) { %>
+                            <tr>
+                                <td colspan="5" class="px-6 py-4 text-center text-gray-500">No products found.</td>
+                            </tr>
+                            <% } %>
+            </tbody>
+        </table>
+    </div>
+
+    <%- include('../../../../src/views/partials/footer') %>

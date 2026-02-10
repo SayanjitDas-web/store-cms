@@ -1,0 +1,24 @@
+<%- include('../partials/header_frontend') %>
+
+    <div class="px-6 py-8 flex-grow">
+        <% if (page.showTitle !==false) { %>
+            <div class="mb-6">
+                <h1 class="text-4xl font-bold text-gray-900">
+                    <%= page.title %>
+                </h1>
+            </div>
+            <% } %>
+
+                <% if (page.featuredImage && page.showFeaturedImage !==false) { %>
+                    <div class="mb-10">
+                        <img src="<%= page.featuredImage %>" alt="<%= page.title %>"
+                            class="w-full h-[50vh] object-cover rounded-xl shadow-lg">
+                    </div>
+                    <% } %>
+
+                        <div class="prose prose-lg max-w-none text-gray-700">
+                            <%- page.content %>
+                        </div>
+    </div>
+
+    <%- include('../partials/footer_frontend') %>

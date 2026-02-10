@@ -1,0 +1,7 @@
+{
+    "name": "page-builder",
+    "version": "1.0.0",
+    "description": "Robust block-based Page Builder",
+    "author": "Antigravity",
+    "entryPoint": "index.js"
+}

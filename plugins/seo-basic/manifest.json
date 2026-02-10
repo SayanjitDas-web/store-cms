@@ -1,0 +1,6 @@
+{
+    "name": "seo-basic",
+    "version": "1.0.0",
+    "description": "Basic SEO plugin to append site name to titles and add meta tags.",
+    "main": "index.js"
+}

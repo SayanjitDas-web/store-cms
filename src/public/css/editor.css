@@ -1,0 +1,62 @@
+.editor-toolbar {
+    border: 1px solid #ced4da;
+    border-bottom: none;
+    border-radius: 0.25rem 0.25rem 0 0;
+    padding: 0.5rem;
+    background-color: #f8f9fa;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    align-items: center;
+}
+
+.editor-btn {
+    background: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    color: #495057;
+    border-radius: 0.2rem;
+    transition: all 0.2s;
+}
+
+.editor-btn:hover {
+    background-color: #e9ecef;
+    border-color: #dae0e5;
+}
+
+.editor-btn:active {
+    background-color: #dee2e6;
+}
+
+.editor-content {
+    border: 1px solid #ced4da;
+    border-radius: 0 0 0.25rem 0.25rem;
+    min-height: 400px;
+    padding: 1rem;
+    background-color: #fff;
+    overflow-y: auto;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.editor-content:focus {
+    outline: none;
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    position: relative;
+    z-index: 1;
+}
+
+/* Simulate placeholder */
+.editor-content:empty:before {
+    content: attr(placeholder);
+    color: #6c757d;
+    display: block; /* For Firefox */
+}
+
+.editor-toolbar .border-end {
+    border-right: 1px solid #dee2e6 !important;
+    height: 1.5rem;
+    margin: 0 0.25rem;
+}

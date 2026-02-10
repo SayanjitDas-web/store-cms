@@ -1,0 +1,7 @@
+{
+    "name": "Navigation Manager",
+    "version": "1.0.0",
+    "description": "Dynamic header navigation and link management.",
+    "main": "index.js",
+    "author": "StoreCMS Core"
+}

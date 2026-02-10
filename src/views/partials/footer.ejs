@@ -1,0 +1,21 @@
+</main>
+</div>
+
+<script src="/js/dashboard.js"></script>
+<script>
+    // Logout Logic
+    const handleLogout = async (e) => {
+        e.preventDefault();
+        await fetch('/api/auth/logout');
+        window.location.href = '/admin/login';
+    };
+
+    const logoutBtn = document.getElementById('logoutBtnHeader');
+    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+
+    const logoutBtnMobile = document.getElementById('logoutBtnMobile');
+    if (logoutBtnMobile) logoutBtnMobile.addEventListener('click', handleLogout);
+</script>
+</body>
+
+</html>

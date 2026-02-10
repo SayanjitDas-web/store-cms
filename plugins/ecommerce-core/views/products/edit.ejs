@@ -1,0 +1,132 @@
+<%- include('../../../../src/views/partials/header') %>
+
+    <div class="flex justify-between items-center pb-4 mb-4 border-b border-gray-200">
+        <h1 class="text-2xl font-bold text-gray-800">Edit Product</h1>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md p-6 max-w-4xl mx-auto">
+        <form action="/admin/ecommerce/products/edit/<%= product._id %>" method="POST" enctype="multipart/form-data">
+            <div class="mb-4">
+                <label for="name" class="block text-gray-700 text-sm font-bold mb-2">Product Name</label>
+                <input type="text"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    id="name" name="name" value="<%= product.name %>" required>
+            </div>
+
+            <div class="mb-4">
+                <label for="price" class="block text-gray-700 text-sm font-bold mb-2">Price</label>
+                <div class="relative rounded-md shadow-sm">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span class="text-gray-500 sm:text-sm">$</span>
+                    </div>
+                    <input type="number"
+                        class="shadow appearance-none border rounded w-full py-2 pl-7 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                        id="price" name="price" step="0.01" value="<%= product.price %>" required>
+                </div>
+            </div>
+
+            <!-- Custom WYSIWYG Editor -->
+            <link rel="stylesheet" href="/css/editor.css">
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Description</label>
+                <div class="border rounded-lg overflow-hidden border-gray-300">
+                    <div class="editor-toolbar bg-gray-50 border-b border-gray-300 p-2 flex space-x-2">
+                        <button type="button" class="editor-btn p-1 hover:bg-gray-200 rounded"
+                            onclick="formatDoc('bold')" title="Bold"><i class="bi bi-type-bold"></i></button>
+                        <button type="button" class="editor-btn p-1 hover:bg-gray-200 rounded"
+                            onclick="formatDoc('italic')" title="Italic"><i class="bi bi-type-italic"></i></button>
+                        <button type="button" class="editor-btn p-1 hover:bg-gray-200 rounded"
+                            onclick="formatDoc('underline')" title="Underline"><i
+                                class="bi bi-type-underline"></i></button>
+
+                        <span class="border-r border-gray-300 mx-2"></span>
+
+                        <button type="button" class="editor-btn p-1 hover:bg-gray-200 rounded"
+                            onclick="formatDoc('insertUnorderedList')" title="Bullet List"><i
+                                class="bi bi-list-ul"></i></button>
+                        <button type="button" class="editor-btn p-1 hover:bg-gray-200 rounded"
+                            onclick="formatDoc('insertOrderedList')" title="Numbered List"><i
+                                class="bi bi-list-ol"></i></button>
+
+                        <span class="border-r border-gray-300 mx-2"></span>
+
+                        <button type="button" class="editor-btn p-1 hover:bg-gray-200 rounded"
+                            onclick="document.execCommand('removeFormat')" title="Clear Formatting"><i
+                                class="bi bi-eraser"></i></button>
+                    </div>
+
+                    <div id="editor" class="editor-content p-4 min-h-[150px] outline-none" contenteditable="true"
+                        placeholder="Product description..."><%- product.description %></div>
+                    <textarea name="description" id="content" class="hidden"><%= product.description %></textarea>
+                </div>
+            </div>
+            <script src="/js/editor.js"></script>
+
+            <label class="block text-gray-700 text-sm font-bold mb-2">Product Image</label>
+
+            <div class="flex items-center space-x-4 mb-2">
+                <!-- Image Preview -->
+                <div id="imagePreview"
+                    class="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center">
+                    <% if(product.image) { %>
+                        <img src="<%= product.image %>" class="w-full h-full object-cover">
+                        <% } else { %>
+                            <i class="bi bi-image text-gray-400 text-2xl"></i>
+                            <% } %>
+                </div>
+
+                <div class="flex-1">
+                    <input type="hidden" name="media_url" id="media_url" value="<%= product.image || '' %>">
+                    <input type="file" id="image" name="image" class="hidden" onchange="previewFile()">
+
+                    <div class="flex space-x-2">
+                        <button type="button" onclick="document.getElementById('image').click()"
+                            class="bg-white border border-gray-300 text-gray-700 font-medium py-2 px-4 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <i class="bi bi-upload mr-2"></i> Upload New
+                        </button>
+                        <button type="button" onclick="openMediaPicker(selectImageFromPicker)"
+                            class="bg-indigo-600 text-white font-medium py-2 px-4 rounded hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <i class="bi bi-images mr-2"></i> Select from Library
+                        </button>
+                    </div>
+                    <p class="text-gray-500 text-xs mt-2">Upload a new file or select from existing media to replace
+                        current image.</p>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between">
+                <button type="submit"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-200">Update
+                    Product</button>
+                <a href="/admin/ecommerce/products"
+                    class="inline-block align-baseline font-bold text-sm text-indigo-600 hover:text-indigo-800">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <%- include('../../../../src/views/partials/media_picker') %>
+
+        <script>
+            function selectImageFromPicker(url) {
+                document.getElementById('media_url').value = url;
+                document.getElementById('image').value = '';
+                const preview = document.getElementById('imagePreview');
+                preview.innerHTML = `<img src="${url}" class="w-full h-full object-cover">`;
+            }
+
+            function previewFile() {
+                const input = document.getElementById('image');
+                const file = input.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        const preview = document.getElementById('imagePreview');
+                        preview.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+                        document.getElementById('media_url').value = '';
+                    }
+                    reader.readAsDataURL(file);
+                }
+            }
+        </script>
+
+        <%- include('../../../../src/views/partials/footer') %>
