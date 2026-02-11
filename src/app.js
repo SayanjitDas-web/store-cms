@@ -21,9 +21,13 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Connect to Database (Graceful)
-connectDB().catch(err => {
+connectDB().then(() => {
+    const { loadFromDatabase } = require('./utils/envManager');
+    return loadFromDatabase();
+}).catch(err => {
     console.log("Database connection failed (likely missing config). Starting in Setup Mode.");
 });
+
 
 // Middleware
 app.use(logger('dev'));
@@ -62,25 +66,31 @@ app.use(mongoSanitize());
 // Prevent XSS
 app.use(xssSanitize());
 
-// Rate Limiting
+// Static Files (Before Limiter and loadUser to avoid unnecessary processing)
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Authentication Middleware (To identify user roles for bypassing)
+const { loadUser } = require('./middlewares/authMiddleware');
+const checkInstalled = require('./middlewares/installMiddleware');
+app.use(loadUser);
+
+
+// Optimized Rate Limiting
 const limiter = rateLimit({
-    windowMs: 10 * 60 * 1000, // 10 mins
-    max: 100, // 100 requests per windowMs
-    skip: (req) => req.path.startsWith('/admin')
+    windowMs: 10 * 60 * 1000, // 10 minutes
+    max: 200, // 200 requests for customers
+    // Securely bypass for Admin and Editor roles
+    skip: (req) => {
+        const bypassRoles = ['admin', 'editor'];
+        return req.user && bypassRoles.includes(req.user.role);
+    }
 });
 app.use(limiter);
 
-app.use(express.static(path.join(__dirname, 'public')));
-
 // View Engine
 app.set('view engine', 'ejs');
-app.set('views', [path.join(__dirname, 'views')]); // Initialize as array
+app.set('views', [path.join(__dirname, 'views')]);
 
-const { loadUser } = require('./middlewares/authMiddleware');
-const checkInstalled = require('./middlewares/installMiddleware');
-
-// Apply loadUser globally before any routes
-app.use(loadUser);
 
 // Global Locals Setup (Cart and User for EJS)
 app.use(async (req, res, next) => {
