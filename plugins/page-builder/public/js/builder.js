@@ -2,7 +2,8 @@
  * StoreCMS Page Builder Core Logic
  */
 
-const BlockRegistry = {
+// Initialize Registry safely (allows other plugins to register blocks before this script loads)
+window.BlockRegistry = window.BlockRegistry || {
     blocks: {},
     register(id, config) {
         this.blocks[id] = config;
@@ -11,6 +12,8 @@ const BlockRegistry = {
         return this.blocks[id];
     }
 };
+const BlockRegistry = window.BlockRegistry;
+
 
 // --- Standard Blocks ---
 
@@ -251,7 +254,10 @@ function init() {
     state.pageLinks = JSON.parse(pagesRaw);
 
     document.getElementById('saveBtn').addEventListener('click', savePage);
+
+
 }
+
 
 function renderPalette() {
     Object.keys(BlockRegistry.blocks).forEach(id => {
@@ -326,8 +332,17 @@ function renderCanvas() {
         const oldBlocks = canvas.querySelectorAll('.group');
         oldBlocks.forEach(b => b.remove());
         canvas.insertBefore(fragment, dropZone);
+
+        // PERSISTENCE FIX: Re-apply selection class after re-render
+        if (state.selectedId !== null) {
+            const blocks = canvas.querySelectorAll('.group');
+            if (blocks[state.selectedId]) {
+                blocks[state.selectedId].classList.add('block-selected');
+            }
+        }
     }
 }
+
 
 // --- Interactions ---
 
@@ -345,17 +360,25 @@ canvas.addEventListener('drop', (e) => {
     renderCanvas();
 });
 
-function selectBlock(index) {
-    state.selectedId = index;
+// INTERCEPTION FIX: Prevent links/buttons from redirecting while in the editor
+canvas.addEventListener('click', (e) => {
+    const target = e.target.closest('a, button');
+    if (target && target.closest('.block-element')) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Interaction intercepted to prevent navigation in editor.');
+    }
+}, true); // Use capture phase to intercept before specific block listeners if any
 
-    // Highlight
-    canvas.querySelectorAll('.group').forEach((el, i) => {
-        if (i === index) el.classList.add('block-selected');
-        else el.classList.remove('block-selected');
-    });
+
+window.selectBlock = function (index) {
+    state.selectedId = index;
+    renderCanvas();
 
     // Show Settings
     const block = state.blocks[index];
+    if (!block) return;
+
     const registry = BlockRegistry.get(block.type);
 
     settings.classList.remove('hidden');
@@ -383,26 +406,36 @@ function selectBlock(index) {
     }
 }
 
-function moveBlock(index, direction) {
+window.moveBlock = function (index, direction) {
     const newIndex = index + direction;
     if (newIndex < 0 || newIndex >= state.blocks.length) return;
 
     const element = state.blocks.splice(index, 1)[0];
     state.blocks.splice(newIndex, 0, element);
+
+    // Update selectedId to follow the moved block
+    if (state.selectedId === index) {
+        state.selectedId = newIndex;
+    } else if (state.selectedId === newIndex) {
+        state.selectedId = index;
+    }
+
     renderCanvas();
 }
 
-function removeBlock(index) {
+window.removeBlock = function (index) {
     if (confirm('Are you sure you want to remove this block?')) {
         state.blocks.splice(index, 1);
+        if (state.selectedId === index) state.selectedId = null;
         settings.classList.add('hidden');
         renderCanvas();
     }
 }
 
+
 // --- Persistence ---
 
-function openHeroPicker() {
+window.openHeroPicker = function () {
     if (window.dashboardAPI && window.dashboardAPI.openMediaPicker) {
         window.dashboardAPI.openMediaPicker({
             onSelect: (url) => {
@@ -419,7 +452,7 @@ function openHeroPicker() {
     }
 }
 
-function openImageBlockPicker() {
+window.openImageBlockPicker = function () {
     if (window.dashboardAPI && window.dashboardAPI.openMediaPicker) {
         window.dashboardAPI.openMediaPicker({
             onSelect: (url) => {
@@ -434,7 +467,8 @@ function openImageBlockPicker() {
         alert('Media Picker not available.');
     }
 }
-async function savePage() {
+
+window.savePage = async function () {
     const btn = document.getElementById('saveBtn');
     btn.disabled = true;
     btn.textContent = 'Saving...';
@@ -471,5 +505,6 @@ async function savePage() {
         btn.textContent = 'Save Changes';
     }
 }
+
 
 init();
