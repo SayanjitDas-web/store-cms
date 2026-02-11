@@ -28,8 +28,8 @@ router.post('/config', async (req, res) => {
             throw new Error('Database URI and JWT Secret are required.');
         }
 
-        // Write to .env
-        writeEnv({
+        // Write to .env and Database
+        await writeEnv({
             MONGO_URI,
             JWT_SECRET,
             IMAGEKIT_PUBLIC_KEY,
@@ -38,6 +38,7 @@ router.post('/config', async (req, res) => {
             NODE_ENV: 'production', // Default to production for security
             PORT: 3000
         });
+
 
         // Reload the environment variables into the current process immediately
         loadToProcessEnv();
