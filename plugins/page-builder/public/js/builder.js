@@ -222,14 +222,6 @@ BlockRegistry.register('product-grid', {
     }
 });
 
-BlockRegistry.register('pricing-table', {
-    name: 'Pricing Table',
-    icon: 'bi-tags',
-    pro: true,
-    defaultData: {},
-    render: () => ''
-});
-
 // --- Builder State & DOM ---
 
 let state = {

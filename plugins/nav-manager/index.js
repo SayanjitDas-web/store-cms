@@ -39,8 +39,10 @@ module.exports = {
     version: '1.0.0',
     description: 'Dynamic navigation and header management for StoreCMS.',
 
-    init: async (app, HookSystem, MediaAPI, { protect, adminMenuMiddleware }) => {
+    init: async (app, HookSystem, MediaAPI, options, PluginManager) => {
+        const { protect, adminMenuMiddleware } = options;
         console.log('Navigation Manager Plugin Initialized');
+        // const PluginManager = require('../../src/core/PluginManager'); // Avoid circular dependency
 
         // Register Views
         const viewsPath = path.join(__dirname, 'views');
@@ -57,10 +59,18 @@ module.exports = {
         if (protect) adminRouter.use(protect);
         if (adminMenuMiddleware) adminRouter.use(adminMenuMiddleware);
 
+        // Active Check Middleware
+        adminRouter.use((req, res, next) => {
+            if (!PluginManager.isPluginActive('nav-manager')) {
+                return res.status(403).send('Plugin is disabled');
+            }
+            next();
+        });
+
         // --- Admin Routes ---
 
         // List Nav Items
-        adminRouter.get('/navigation', async (req, res) => {
+        adminRouter.get('/', async (req, res) => {
             try {
                 const navItems = await NavItem.find().sort({ order: 1 });
 
@@ -81,7 +91,7 @@ module.exports = {
         });
 
         // Update Logo Settings
-        adminRouter.post('/navigation/settings', async (req, res) => {
+        adminRouter.post('/settings', async (req, res) => {
             try {
                 const { logoType, logoContent, logoContentImage } = req.body;
                 const finalContent = logoType === 'image' ? logoContentImage : logoContent;
@@ -101,7 +111,7 @@ module.exports = {
         });
 
         // Add Nav Item
-        adminRouter.post('/navigation', async (req, res) => {
+        adminRouter.post('/', async (req, res) => {
             try {
                 await NavItem.create(req.body);
                 res.redirect('/admin/navigation');
@@ -111,7 +121,7 @@ module.exports = {
         });
 
         // Update Nav Item
-        adminRouter.post('/navigation/edit/:id', async (req, res) => {
+        adminRouter.post('/edit/:id', async (req, res) => {
             try {
                 await NavItem.findByIdAndUpdate(req.params.id, req.body);
                 res.redirect('/admin/navigation');
@@ -121,7 +131,7 @@ module.exports = {
         });
 
         // Delete Nav Item
-        adminRouter.post('/navigation/delete/:id', async (req, res) => {
+        adminRouter.post('/delete/:id', async (req, res) => {
             try {
                 await NavItem.findByIdAndDelete(req.params.id);
                 res.redirect('/admin/navigation');
@@ -130,12 +140,13 @@ module.exports = {
             }
         });
 
-        app.use('/admin', adminRouter);
+        app.use('/admin/navigation', adminRouter);
 
         // --- Hooks & Filters ---
 
         // Add to Admin Sidebar
         HookSystem.addFilter('admin_sidebar_menu', (menu) => {
+            if (!PluginManager.isPluginActive('nav-manager')) return menu;
             menu.push({
                 title: 'Navigation',
                 link: '/admin/navigation',
@@ -147,6 +158,7 @@ module.exports = {
 
         // Filter for Frontend Navigation
         HookSystem.addFilter('header_nav_links', async (links) => {
+            if (!PluginManager.isPluginActive('nav-manager')) return links;
             const dbLinks = await NavItem.find().sort({ order: 1 });
             if (dbLinks.length > 0) {
                 // If the user has defined links, replace the default ones
@@ -161,6 +173,7 @@ module.exports = {
 
         // Filter for Frontend Logo
         HookSystem.addFilter('header_logo', async (defaultLogo) => {
+            if (!PluginManager.isPluginActive('nav-manager')) return defaultLogo;
             const settings = await NavSettings.findOne({ key: 'header_logo' });
             if (settings) {
                 return settings.value;

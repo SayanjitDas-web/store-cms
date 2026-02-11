@@ -22,15 +22,17 @@ try {
 
 // Define Order Model Schema
 const OrderSchema = new mongoose.Schema({
-    product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' }, // Legacy, removing reference as array is better
     items: [{
         productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
         name: String,
         price: Number,
         quantity: Number
     }],
-    quantity: { type: Number, default: 1 }, // Legacy
-    status: { type: String, default: 'pending' },
+    status: {
+        type: String,
+        enum: ['pending', 'processing', 'shipped', 'completed', 'cancelled', 'refunded'],
+        default: 'pending'
+    },
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     customerInfo: {
         firstName: String,
@@ -39,6 +41,16 @@ const OrderSchema = new mongoose.Schema({
         address: String
     },
     totalAmount: Number,
+    payment: {
+        method: { type: String, default: 'cod' }, // cod, stripe, paypal
+        transactionId: String,
+        status: { type: String, default: 'pending' }
+    },
+    history: [{
+        status: String,
+        updatedAt: { type: Date, default: Date.now },
+        note: String
+    }],
     createdAt: { type: Date, default: Date.now }
 });
 
@@ -72,14 +84,7 @@ module.exports = {
         if (adminMenuMiddleware) adminRouter.use(adminMenuMiddleware);
 
         // --- Frontend Routes ---
-        app.get('/shop', async (req, res) => {
-            try {
-                const products = await Product.find().sort({ createdAt: -1 });
-                res.render('frontend/shop', { products });
-            } catch (err) {
-                res.status(500).send(err.message);
-            }
-        });
+        // The /shop route is now handled by the CMS (see seeded pages in setup.js)
 
         app.get('/shop/product/:id', async (req, res) => {
             try {
@@ -109,6 +114,12 @@ module.exports = {
 
             const product = await Product.findById(productId);
             if (!product) return res.status(404).send('Product not found');
+
+            // Basic Stock Check for Add to Cart (Optional but good UX)
+            if (product.stock < qty) {
+                // ideally flash a message, but for now just don't add
+                console.log('Not enough stock');
+            }
 
             const existingItem = req.session.cart.items.find(item => item.productId === productId);
 
@@ -175,11 +186,28 @@ module.exports = {
                 return res.redirect('/cart');
             }
 
-            try {
+            const executeCheckout = async (session) => {
                 const { firstName, lastName, email, address, paymentMethod } = req.body;
+                const cartItems = req.session.cart.items;
 
-                // Create Order
-                const order = await Order.create({
+                // 1. Check Stock for ALL items
+                for (const item of cartItems) {
+                    const product = await Product.findById(item.productId).session(session);
+                    if (!product || product.stock < item.quantity) {
+                        throw new Error(`Insufficient stock for ${item.name}`);
+                    }
+                }
+
+                // 2. Deduct Stock
+                for (const item of cartItems) {
+                    await Product.findByIdAndUpdate(item.productId, {
+                        $inc: { stock: -item.quantity }
+                    }).session(session);
+                }
+
+                // 3. Create Order
+                // Passing array to create() with options object allows passing the session
+                const orders = await Order.create([{
                     user: req.user._id,
                     customerInfo: {
                         firstName,
@@ -189,17 +217,59 @@ module.exports = {
                     },
                     totalAmount: req.session.cart.total,
                     status: 'pending',
-                    items: req.session.cart.items
-                });
+                    items: cartItems,
+                    payment: {
+                        method: paymentMethod || 'cod',
+                        status: 'pending'
+                    },
+                    history: [{
+                        status: 'pending',
+                        note: 'Order placed by customer'
+                    }]
+                }], { session });
+
+                return orders[0];
+            };
+
+            const session = await mongoose.startSession();
+            let order;
+
+            try {
+                session.startTransaction();
+                order = await executeCheckout(session);
+                await session.commitTransaction();
+            } catch (err) {
+                await session.abortTransaction();
+
+                // Check if error is due to Standalone MongoDB (no transaction support)
+                if (err.code === 20 || err.codeName === 'IllegalOperation' || err.message.includes('Transaction numbers are only allowed')) {
+                    console.log('⚠️ MongoDB Standalone detected. Fallback to non-transactional checkout. (Use Replica Set for production)');
+                    try {
+                        // Retry without session
+                        order = await executeCheckout(null);
+                    } catch (retryErr) {
+                        console.error('Checkout Error (Fallback):', retryErr);
+                        req.session.error = retryErr.message;
+                        return res.redirect('/cart');
+                    }
+                } else {
+                    console.error('Checkout Transaction Error:', err);
+                    req.session.error = err.message;
+                    return res.redirect('/cart');
+                }
+            } finally {
+                session.endSession();
+            }
+
+            if (order) {
+                // Fire Hook
+                HookSystem.doAction('order_created', order);
 
                 // Clear Cart
                 req.session.cart = { items: [], total: 0 };
 
                 // Redirect to Success
                 res.redirect(`/shop/order/success/${order._id}`);
-            } catch (err) {
-                console.error(err);
-                res.status(500).send('Error processing order');
             }
         });
 
@@ -233,7 +303,7 @@ module.exports = {
         // Create Action
         adminRouter.post('/products', upload, async (req, res) => {
             try {
-                const { name, price, description, media_url } = req.body;
+                const { name, price, description, stock, media_url } = req.body;
                 let image = media_url || '';
 
                 if (req.file) {
@@ -244,6 +314,7 @@ module.exports = {
                     name,
                     price,
                     description,
+                    stock: stock || 0,
                     image
                 });
 
@@ -268,8 +339,8 @@ module.exports = {
         // Edit Action
         adminRouter.post('/products/edit/:id', upload, async (req, res) => {
             try {
-                const { name, price, description, media_url } = req.body;
-                const updateData = { name, price, description };
+                const { name, price, description, stock, media_url } = req.body;
+                const updateData = { name, price, description, stock: stock || 0 };
 
                 if (req.file) {
                     updateData.image = await saveMedia(req.file);
@@ -290,7 +361,7 @@ module.exports = {
         // List Orders
         adminRouter.get('/orders', async (req, res) => {
             try {
-                const orders = await Order.find().populate('product').populate('user').sort({ createdAt: -1 });
+                const orders = await Order.find().populate('items.productId').populate('user').sort({ createdAt: -1 });
                 res.render('orders/index', { orders });
             } catch (err) {
                 res.status(500).send(err.message);
@@ -311,8 +382,26 @@ module.exports = {
         // Update Order Status
         adminRouter.post('/orders/:id/status', async (req, res) => {
             try {
-                const { status } = req.body;
-                await Order.findByIdAndUpdate(req.params.id, { status });
+                const { status, note } = req.body;
+                const order = await Order.findById(req.params.id);
+
+                if (!order) return res.status(404).send('Order not found');
+
+                const oldStatus = order.status;
+                order.status = status;
+
+                // Add History
+                order.history.push({
+                    status: status,
+                    note: note || `Status updated to ${status} by admin`,
+                    updatedAt: new Date()
+                });
+
+                await order.save();
+
+                // Fire Hook
+                HookSystem.doAction('order_status_updated', order, oldStatus, status);
+
                 res.redirect(`/admin/ecommerce/orders/${req.params.id}`);
             } catch (err) {
                 console.error(err);
@@ -328,6 +417,56 @@ module.exports = {
             } catch (err) {
                 console.error(err);
                 res.status(500).send('Error deleting product');
+            }
+        });
+
+        // Create Action
+        adminRouter.post('/products', upload, async (req, res) => {
+            try {
+                const { name, price, description, media_url, stock } = req.body;
+                let image = media_url || '';
+
+                if (req.file) {
+                    image = await saveMedia(req.file);
+                }
+
+                await Product.create({
+                    name,
+                    price,
+                    description,
+                    stock: parseInt(stock) || 0,
+                    image
+                });
+
+                res.redirect('/admin/ecommerce/products');
+            } catch (err) {
+                console.error(err);
+                res.status(500).send('Error creating product');
+            }
+        });
+
+        // Edit Action
+        adminRouter.post('/products/edit/:id', upload, async (req, res) => {
+            try {
+                const { name, price, description, media_url, stock } = req.body;
+                const updateData = {
+                    name,
+                    price,
+                    description,
+                    stock: parseInt(stock) || 0
+                };
+
+                if (req.file) {
+                    updateData.image = await saveMedia(req.file);
+                } else if (media_url) {
+                    updateData.image = media_url;
+                }
+
+                await Product.findByIdAndUpdate(req.params.id, updateData);
+                res.redirect('/admin/ecommerce/products');
+            } catch (err) {
+                console.error(err);
+                res.status(500).send('Error updating product');
             }
         });
 

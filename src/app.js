@@ -21,13 +21,9 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Connect to Database (Graceful)
-(async () => {
-    try {
-        await connectDB();
-    } catch (err) {
-        console.log("Database connection failed (likely missing config). Starting in Setup Mode.");
-    }
-})();
+connectDB().catch(err => {
+    console.log("Database connection failed (likely missing config). Starting in Setup Mode.");
+});
 
 // Middleware
 app.use(logger('dev'));
@@ -39,19 +35,21 @@ app.use(cookieParser());
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
 
-app.use(session({
+const sessionConfig = {
     secret: process.env.JWT_SECRET || 'secret_key', // shared secret
     resave: false,
     saveUninitialized: false,
-    store: (MongoStore.create || MongoStore.default.create)({ mongoUrl: process.env.MONGO_URI }),
     cookie: {
         maxAge: 1000 * 60 * 60 * 24, // 1 day
         secure: process.env.NODE_ENV === 'production'
     }
-}));
+};
 
-// Cart & User Middleware (Make data available to all views)
-// NOTE: We'll move this further down after loadUser is applied globally
+if (process.env.MONGO_URI) {
+    sessionConfig.store = (MongoStore.create || MongoStore.default.create)({ mongoUrl: process.env.MONGO_URI });
+}
+
+app.use(session(sessionConfig));
 
 // Security Headers
 app.use(helmet({
@@ -76,10 +74,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // View Engine
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
+app.set('views', [path.join(__dirname, 'views')]); // Initialize as array
 
 const { loadUser } = require('./middlewares/authMiddleware');
-
 const checkInstalled = require('./middlewares/installMiddleware');
 
 // Apply loadUser globally before any routes
@@ -91,7 +88,15 @@ app.use(async (req, res, next) => {
     res.locals.user = req.user || null;
     res.locals.currentPath = req.path;
 
-    // Global Navigation for Frontend
+    // Flash Messages
+    res.locals.error = req.session.error || null;
+    res.locals.success = req.session.success || null;
+    if (req.session) {
+        delete req.session.error;
+        delete req.session.success;
+    }
+
+    // Global Navigation for Frontend (Initial defaults)
     if (!req.path.startsWith('/admin') && !req.path.startsWith('/api') && !req.path.startsWith('/setup')) {
         const defaultLinks = [
             { title: 'Home', url: '/' },
@@ -100,6 +105,11 @@ app.use(async (req, res, next) => {
         ];
         res.locals.navLinks = await HookSystem.applyFilter('header_nav_links', defaultLinks);
         res.locals.logo = await HookSystem.applyFilter('header_logo', { type: 'text', content: 'StoreCMS' });
+
+        // Content Hooks
+        res.locals.headContent = await HookSystem.applyFilter('head_content', '');
+        res.locals.headerContent = await HookSystem.applyFilter('frontend_header', '');
+        res.locals.footerContent = await HookSystem.applyFilter('frontend_footer', '');
     }
     next();
 });
@@ -107,26 +117,17 @@ app.use(async (req, res, next) => {
 // Setup Check Middleware (Runs on every request)
 app.use(checkInstalled);
 
-// Initialize Plugins
-(async () => {
-    await PluginManager.loadPlugins(app);
+// Initialize Plugins and Routes
+// Since loadPlugins is async, we use a promise.then or just wait for it before mounting routes.
+// However, in Express 4/5, routes mounted after an async call might not be registered correctly
+// if the request comes in before they are ready. 
+// A better way is to wait for plugins to load before starting the server, 
+// but for now, we'll keep it simple and ensure core routes are registered.
 
-    // Global Navigation Middleware (Runs after plugins are loaded)
-    app.use(async (req, res, next) => {
-        // Only apply to frontend routes
-        if (!req.path.startsWith('/admin') && !req.path.startsWith('/api') && !req.path.startsWith('/setup')) {
-            const defaultLinks = [
-                { title: 'Home', url: '/' },
-                { title: 'Shop', url: '/shop' },
-                { title: 'Cart', url: '/cart' }
-            ];
-            const HookSystem = require('./core/HookSystem');
-            res.locals.navLinks = await HookSystem.applyFilter('header_nav_links', defaultLinks);
-        }
-        next();
-    });
+PluginManager.loadPlugins(app).then(() => {
+    console.log('All plugins loaded successfully');
 
-    // Core Routes (Hooks can modify these)
+    // Mount core routes AFTER plugins might have registered hooks/filters
     app.use('/setup', require('./routes/setup'));
     app.use('/admin', require('./routes/admin'));
     app.use('/customer', require('./routes/customer'));
@@ -134,12 +135,30 @@ app.use(checkInstalled);
     app.use('/api/auth', require('./routes/auth'));
     app.use('/', require('./routes/index')); // Catch-all must be last
 
+    // 404 Handler (Runs if no route matches)
+    app.use((req, res, next) => {
+        res.status(404).render('error', {
+            status: 404,
+            message: 'Oops! The page you are looking for does not exist.',
+            error: {}
+        });
+    });
+
+    // Silence Chrome internal diagnostic noise
+    app.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => res.status(204).end());
+
     // Global Error Handler
     app.use((err, req, res, next) => {
         console.error(err.stack);
-        res.status(500).send('Something broke!');
+        const status = err.status || 500;
+        res.status(status).render('error', {
+            status,
+            message: process.env.NODE_ENV === 'production'
+                ? 'Something went wrong on our end. We are looking into it.'
+                : err.message,
+            error: process.env.NODE_ENV === 'development' ? err : {}
+        });
     });
-
-})();
+});
 
 module.exports = app;

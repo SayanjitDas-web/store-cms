@@ -1,0 +1,46 @@
+<%- include('partials/header_frontend') %>
+
+<main class="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8 text-center bg-white p-10 rounded-3xl shadow-2xl border border-gray-100 transform transition-all hover:scale-[1.01]">
+        <div>
+            <div class="mx-auto flex items-center justify-center h-24 w-24 rounded-full bg-red-50 mb-6 group">
+                <i class="bi <%= status === 404 ? 'bi-search' : 'bi-exclamation-triangle' %> text-5xl text-red-500 group-hover:scale-110 transition-transform duration-300"></i>
+            </div>
+            <h1 class="text-7xl font-extrabold text-gray-900 tracking-tight mb-2">
+                <%= status %>
+            </h1>
+            <h2 class="text-3xl font-bold text-gray-800 mb-4 uppercase tracking-wider">
+                <%= status === 404 ? 'Page Not Found' : 'Internal Error' %>
+            </h2>
+            <p class="mt-2 text-lg text-gray-600 leading-relaxed">
+                <%= message || 'Something went wrong on our end. We are looking into it.' %>
+            </p>
+        </div>
+        
+        <div class="mt-8 flex flex-col space-y-4">
+            <a href="/" class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-all duration-300 shadow-lg hover:shadow-xl">
+                <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                    <i class="bi bi-house-door text-gray-400 group-hover:text-white transition-colors"></i>
+                </span>
+                Back to Home
+            </a>
+            
+            <a href="javascript:history.back()" class="text-sm font-semibold text-gray-500 hover:text-gray-900 transition-colors flex items-center justify-center">
+                <i class="bi bi-arrow-left mr-2"></i> Go Back
+            </a>
+        </div>
+
+        <% if (typeof error !== 'undefined' && process.env.NODE_ENV === 'development') { %>
+            <div class="mt-10 pt-6 border-t border-gray-100 text-left">
+                <button onclick="document.getElementById('debug-info').classList.toggle('hidden')" class="text-xs font-mono text-gray-400 hover:text-gray-600 uppercase tracking-widest font-bold flex items-center">
+                    <i class="bi bi-bug-fill mr-1"></i> Debug Info
+                </button>
+                <div id="debug-info" class="hidden mt-4 p-4 bg-gray-50 rounded-xl overflow-auto max-h-48 shadow-inner border border-gray-200">
+                    <pre class="text-[10px] font-mono text-pink-600 leading-tight"><%= error.stack %></pre>
+                </div>
+            </div>
+        <% } %>
+    </div>
+</main>
+
+<%- include('partials/footer_frontend') %>

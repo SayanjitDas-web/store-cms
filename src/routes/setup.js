@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-const { checkEnv, writeEnv, getEnv } = require('../utils/envManager');
+const Page = require('../models/Page');
+const { checkEnv, writeEnv, getEnv, loadToProcessEnv } = require('../utils/envManager');
 
 // Configuration Routes
 router.get('/config', (req, res) => {
@@ -38,6 +39,9 @@ router.post('/config', async (req, res) => {
             PORT: 3000
         });
 
+        // Reload the environment variables into the current process immediately
+        loadToProcessEnv();
+
         // Force restart instruction (or auto-reload strategies - for now, just render success)
         // Since nodemon restarts on file change, this might just work if we handle connection errors gracefully
 
@@ -68,12 +72,60 @@ router.post('/', async (req, res) => {
 
     try {
         // Create Admin User
-        await User.create({
+        const admin = await User.create({
             username,
             email,
             password,
             role: 'admin'
         });
+
+        // Seed Default Pages
+        await Page.create([
+            {
+                title: 'Home',
+                slug: 'home',
+                content: `
+                    <div class="py-20 text-center">
+                        <h1 class="text-3xl font-bold mb-4">Welcome to our store!</h1>
+                        <p class="text-gray-600">We have switched to use the Page Builder for a better experience.</p>
+                    </div>
+                `,
+                blocks: [
+                    {
+                        type: 'hero',
+                        data: {
+                            title: `Welcome to ${siteTitle}`,
+                            subtitle: 'Discover our premium collection of products curated just for you.',
+                            buttonText: 'Shop Now',
+                            buttonUrl: '/shop',
+                            image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80&w=1600'
+                        }
+                    },
+                    {
+                        type: 'feature-list',
+                        data: {
+                            features: 'Premium Quality, Fast Shipping, 24/7 Support, Secure Payment'
+                        }
+                    },
+                    {
+                        type: 'product-grid',
+                        data: {
+                            title: 'New Arrivals',
+                            limit: '4'
+                        }
+                    }
+                ],
+                status: 'published',
+                author: admin._id
+            },
+            {
+                title: 'Shop',
+                slug: 'shop',
+                content: '[products limit="12"]',
+                status: 'published',
+                author: admin._id
+            }
+        ]);
 
         // TODO: Save siteTitle to config (if we had a config store)
         // For now, just logging it or could save to a Settings model

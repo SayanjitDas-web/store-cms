@@ -1,8 +1,23 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const { loadToProcessEnv } = require('../utils/envManager');
+// Note: HookSystem is required inside the function to avoid circular dependencies if any, 
+// strictly speaking it's fine at top level but good to be safe. 
+// Actually, I already required it inside the function in the previous step. 
+// So I don't need to add it here.
 
 // Generate JWT
 const generateToken = (id) => {
+    // Safety check for stale env
+    if (!process.env.JWT_SECRET) {
+        console.log('JWT_SECRET missing, attempting to reload env...');
+        loadToProcessEnv();
+    }
+
+    if (!process.env.JWT_SECRET) {
+        throw new Error('JWT_SECRET is not defined in environment variables');
+    }
+
     return jwt.sign({ id }, process.env.JWT_SECRET, {
         expiresIn: '30d',
     });
@@ -67,6 +82,10 @@ exports.login = async (req, res) => {
         if (user && (await user.matchPassword(password))) {
             const token = generateToken(user._id);
 
+            // Fire Action Hook
+            const HookSystem = require('../core/HookSystem');
+            HookSystem.doAction('user_login', user);
+
             res.cookie('token', token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
@@ -84,7 +103,11 @@ exports.login = async (req, res) => {
             res.status(401).json({ message: 'Invalid email or password' });
         }
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error('Login Error:', error);
+        res.status(500).json({
+            message: 'Server error during login',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 };
 

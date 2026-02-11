@@ -1,5 +1,13 @@
 const Page = require('../models/Page');
 
+// Helper to parse boolean from form (handles hidden input fallback array)
+const parseBoolean = (value) => {
+    if (Array.isArray(value)) {
+        return value.includes('true');
+    }
+    return value === 'true' || value === true;
+};
+
 // @desc    Get all pages (Admin)
 // @route   GET /admin/pages
 // @access  Private/Admin
@@ -38,8 +46,8 @@ exports.createPage = async (req, res) => {
         // No extra logic needed, just passing req.body to create() handles it.
 
         // Explicitly handle boolean settings (checkboxes don't send values when unchecked)
-        req.body.showTitle = req.body.showTitle === 'true' || req.body.showTitle === true;
-        req.body.showFeaturedImage = req.body.showFeaturedImage === 'true' || req.body.showFeaturedImage === true;
+        req.body.showTitle = parseBoolean(req.body.showTitle);
+        req.body.showFeaturedImage = parseBoolean(req.body.showFeaturedImage);
 
         const page = await Page.create(req.body);
 
@@ -102,8 +110,8 @@ exports.updatePage = async (req, res) => {
         }
 
         // Explicitly handle boolean settings (checkboxes don't send values when unchecked)
-        req.body.showTitle = req.body.showTitle === 'true' || req.body.showTitle === true;
-        req.body.showFeaturedImage = req.body.showFeaturedImage === 'true' || req.body.showFeaturedImage === true;
+        req.body.showTitle = parseBoolean(req.body.showTitle);
+        req.body.showFeaturedImage = parseBoolean(req.body.showFeaturedImage);
 
         page = await Page.findByIdAndUpdate(req.params.id, req.body, {
             new: true,

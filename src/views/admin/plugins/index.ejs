@@ -2,67 +2,146 @@
 
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold text-gray-800">Plugins</h1>
+
+        <!-- Upload Form -->
+        <form action="/admin/plugins/upload" method="POST" enctype="multipart/form-data"
+            class="flex items-center gap-2">
+            <input type="file" name="plugin" accept=".zip" required class="border rounded px-2 py-1 text-sm bg-white">
+            <button type="submit"
+                class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm flex items-center">
+                <i class="bi bi-upload mr-1"></i> Install Plugin
+            </button>
+        </form>
     </div>
 
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name
-                        </th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Version</th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Description</th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status</th>
-                        <th scope="col"
-                            class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    <% Object.keys(plugins).forEach(key=> {
-                        const plugin = plugins[key];
-                        %>
-                        <tr class="hover:bg-gray-50 transition">
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900">
-                                    <%= plugin.name %>
-                                </div>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <%= plugin.version %>
-                            </td>
-                            <td class="px-6 py-4 text-sm text-gray-500">
-                                <%= plugin.description %>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span
-                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                    Active
-                                </span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <button class="text-gray-400 cursor-not-allowed" disabled>Toggle</button>
-                            </td>
-                        </tr>
-                        <% }); %>
-                            <% if (Object.keys(plugins).length===0) { %>
-                                <tr>
-                                    <td colspan="5" class="px-6 py-10 text-center text-gray-500">
-                                        No plugins found.
-                                    </td>
-                                </tr>
-                                <% } %>
-                </tbody>
-            </table>
+    <% if (typeof error !=='undefined' && error) { %>
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4" role="alert">
+            <strong class="font-bold">Error!</strong>
+            <span class="block sm:inline">
+                <%= error %>
+            </span>
         </div>
-    </div>
+        <% } %>
 
-    <%- include('../../partials/footer') %>
+            <% if (typeof success !=='undefined' && success) { %>
+                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4" role="alert">
+                    <strong class="font-bold">Success!</strong>
+                    <span class="block sm:inline">
+                        <%= success %>
+                    </span>
+                </div>
+                <% } %>
+
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col"
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Name</th>
+                                        <th scope="col"
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Version</th>
+                                        <th scope="col"
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Description</th>
+                                        <th scope="col"
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Status</th>
+                                        <th scope="col"
+                                            class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <% if (Object.keys(plugins).length===0) { %>
+                                        <tr>
+                                            <td colspan="5" class="px-6 py-10 text-center text-gray-500">
+                                                No plugins found. Upload one to get started!
+                                            </td>
+                                        </tr>
+                                        <% } else { %>
+                                            <% Object.keys(plugins).forEach(key=> {
+                                                const plugin = plugins[key];
+                                                const isActive = plugin.active !== false;
+                                                %>
+                                                <tr class="hover:bg-gray-50 transition">
+                                                    <td class="px-6 py-4 whitespace-nowrap">
+                                                        <div class="flex items-center">
+                                                            <% if(plugin.icon) { %><i
+                                                                    class="bi <%= plugin.icon %> mr-2 text-indigo-500"></i>
+                                                                <% } %>
+                                                                    <div class="text-sm font-medium text-gray-900">
+                                                                        <%= plugin.name %>
+                                                                    </div>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        <%= plugin.version %>
+                                                    </td>
+                                                    <td class="px-6 py-4 text-sm text-gray-500">
+                                                        <%= plugin.description %>
+                                                            <% if(plugin.error) { %>
+                                                                <div class="text-red-500 text-xs mt-1 font-bold">Error:
+                                                                    <%= plugin.error %>
+                                                                </div>
+                                                                <% } %>
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap">
+                                                        <% if(isActive) { %>
+                                                            <span
+                                                                class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Active</span>
+                                                            <% } else { %>
+                                                                <span
+                                                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">Inactive</span>
+                                                                <% } %>
+                                                    </td>
+                                                    <td
+                                                        class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end gap-2 items-center">
+                                                        <!-- Toggle Button -->
+                                                        <% if (plugin.canToggle) { %>
+                                                            <form action="/admin/plugins/toggle/<%= key %>"
+                                                                method="POST" class="inline-block m-0 p-0">
+                                                                <input type="hidden" name="enable"
+                                                                    value="<%= !isActive %>">
+                                                                <button type="submit"
+                                                                    class="<%= isActive ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900' %> font-bold text-xs uppercase tracking-wider border border-current rounded px-2 py-1 transition-colors">
+                                                                    <%= isActive ? 'Deactivate' : 'Activate' %>
+                                                                </button>
+                                                            </form>
+                                                            <% } else { %>
+                                                                <span
+                                                                    class="text-gray-400 text-xs font-bold uppercase tracking-wider border border-gray-300 rounded px-2 py-1 cursor-not-allowed">
+                                                                    Locked
+                                                                </span>
+                                                                <% } %>
+
+                                                                    <!-- Delete Button -->
+                                                                    <% if (plugin.canUninstall) { %>
+                                                                        <form action="/admin/plugins/delete/<%= key %>"
+                                                                            method="POST" class="inline-block m-0 p-0"
+                                                                            onsubmit="return confirm('Are you sure? This will delete the plugin files.');">
+                                                                            <button type="submit"
+                                                                                class="text-red-600 hover:text-red-900 ml-4"
+                                                                                title="Delete Plugin">
+                                                                                <i class="bi bi-trash"></i>
+                                                                            </button>
+                                                                        </form>
+                                                                        <% } else { %>
+                                                                            <button
+                                                                                class="text-gray-300 ml-4 cursor-not-allowed"
+                                                                                title="System Plugin" disabled>
+                                                                                <i class="bi bi-shield-lock-fill"></i>
+                                                                            </button>
+                                                                            <% } %>
+                                                    </td>
+                                                </tr>
+                                                <% }); %>
+                                                    <% } %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <%- include('../../partials/footer') %>

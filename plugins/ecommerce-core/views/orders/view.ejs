@@ -6,7 +6,7 @@
         <a href="/admin/ecommerce/orders" class="text-indigo-600 hover:text-indigo-900">Back to Orders</a>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <!-- customer info -->
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Customer Information</h2>
@@ -27,7 +27,34 @@
             </div>
         </div>
 
-        <!-- order info -->
+        <!-- payment info -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Payment Details</h2>
+            <div class="space-y-2">
+                <p><span class="font-medium text-gray-600">Method:</span>
+                    <span class="uppercase">
+                        <%= order.payment ? order.payment.method : 'COD' %>
+                    </span>
+                </p>
+                <p><span class="font-medium text-gray-600">Status:</span>
+                    <span class="capitalize">
+                        <%= order.payment ? order.payment.status : 'Pending' %>
+                    </span>
+                </p>
+                <% if(order.payment && order.payment.transactionId) { %>
+                    <p><span class="font-medium text-gray-600">Transaction ID:</span>
+                        <span class="font-mono text-sm">
+                            <%= order.payment.transactionId %>
+                        </span>
+                    </p>
+                    <% } %>
+                        <p class="mt-4"><span class="font-medium text-gray-600">Total Amount:</span> <span
+                                class="text-xl font-bold text-indigo-600">$<%= order.totalAmount ?
+                                    order.totalAmount.toFixed(2) : '0.00' %></span></p>
+            </div>
+        </div>
+
+        <!-- order status -->
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Order Status</h2>
             <div class="space-y-2">
@@ -36,38 +63,36 @@
                 </p>
                 <div class="flex flex-col space-y-4">
                     <div class="flex items-center">
-                        <span class="font-medium text-gray-600 mr-2">Current Status:</span>
+                        <span class="font-medium text-gray-600 mr-2">Current:</span>
                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <%= order.status === 'completed' ? 'bg-green-100 text-green-800' : 
                                 order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                                 'bg-yellow-100 text-yellow-800' %>">
-                            <%= order.status %>
+                            <%= order.status.toUpperCase() %>
                         </span>
                     </div>
 
                     <form action="/admin/ecommerce/orders/<%= order._id %>/status" method="POST"
                         class="mt-4 pt-4 border-t border-gray-100">
                         <label for="status" class="block text-sm font-medium text-gray-700 mb-2">Update Status</label>
-                        <div class="flex space-x-2">
-                            <select id="status" name="status"
-                                class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-sm py-1.5"
-                                style="border: 1px solid #d1d5db;">
-                                <% ['pending', 'processing' , 'shipped' , 'delivered' , 'completed' , 'cancelled'
-                                    ].forEach(s=> { %>
-                                    <option value="<%= s %>" <%=order.status===s ? 'selected' : '' %>><%=
-                                            s.charAt(0).toUpperCase() + s.slice(1) %>
-                                    </option>
-                                    <% }); %>
-                            </select>
-                            <button type="submit"
-                                class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold py-1.5 px-3 rounded transition-colors duration-200">
-                                Update
-                            </button>
-                        </div>
+                        <select id="status" name="status"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-sm py-2 mb-2"
+                            style="border: 1px solid #d1d5db;">
+                            <% ['pending', 'processing' , 'shipped' , 'completed' , 'cancelled' , 'refunded'
+                                ].forEach(s=> { %>
+                                <option value="<%= s %>" <%=order.status===s ? 'selected' : '' %>><%=
+                                        s.charAt(0).toUpperCase() + s.slice(1) %>
+                                </option>
+                                <% }); %>
+                        </select>
+                        <input type="text" name="note" placeholder="Add a note (optional)"
+                            class="block w-full rounded-md border-gray-300 shadow-sm text-sm py-2 mb-2 px-2"
+                            style="border: 1px solid #d1d5db;">
+                        <button type="submit"
+                            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold py-2 px-4 rounded transition-colors duration-200">
+                            Update Status
+                        </button>
                     </form>
                 </div>
-                <p class="mt-4"><span class="font-medium text-gray-600">Total Amount:</span> <span
-                        class="text-xl font-bold text-indigo-600">$<%= order.totalAmount ? order.totalAmount.toFixed(2)
-                            : '0.00' %></span></p>
             </div>
         </div>
     </div>
@@ -127,6 +152,38 @@
                                 <% } %>
             </tbody>
         </table>
+    </div>
+
+    <!-- History Log -->
+    <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-800">Order History</h2>
+        </div>
+        <div class="p-6">
+            <div class="relative border-l-2 border-gray-200 ml-3 space-y-8">
+                <% if (order.history && order.history.length> 0) { %>
+                    <% order.history.slice().reverse().forEach((entry, index)=> { %>
+                        <div class="relative flex items-start group">
+                            <div class="ml-6 w-full">
+                                <div class="flex items-center justify-between mb-1">
+                                    <h3 class="text-md font-bold text-gray-900 capitalize">
+                                        <%= entry.status %>
+                                    </h3>
+                                    <time class="text-sm text-gray-500">
+                                        <%= new Date(entry.updatedAt).toLocaleString() %>
+                                    </time>
+                                </div>
+                                <p class="text-gray-600 text-sm bg-gray-50 p-3 rounded-md border border-gray-100">
+                                    <%= entry.note || 'No additional notes' %>
+                                </p>
+                            </div>
+                        </div>
+                        <% }); %>
+                            <% } else { %>
+                                <p class="ml-6 text-gray-500 italic">No history available.</p>
+                                <% } %>
+            </div>
+        </div>
     </div>
 
     <%- include('../../../../src/views/partials/footer') %>

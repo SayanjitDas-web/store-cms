@@ -16,7 +16,7 @@ router.get('/dashboard', (req, res) => {
     res.render('admin/dashboard', { user: req.user });
 });
 
-const { getPlugins, togglePlugin } = require('../controllers/pluginController');
+const { getPlugins, togglePlugin, uploadPlugin, deletePlugin } = require('../controllers/pluginController');
 
 // Page Routes
 // Cloud-Ready Upload Middleware
@@ -40,7 +40,9 @@ router.post('/media/api/delete', mediaController.apiDelete);
 
 // Plugin Routes
 router.get('/plugins', getPlugins);
+router.post('/plugins/upload', uploadPlugin);
 router.post('/plugins/toggle/:name', togglePlugin);
+router.post('/plugins/delete/:name', deletePlugin);
 
 router.get('/', (req, res) => {
     res.redirect('/admin/dashboard');

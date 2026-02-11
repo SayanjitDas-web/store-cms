@@ -7,13 +7,20 @@ module.exports = {
     version: '1.0.0',
     description: 'A robust block-based Page Builder for StoreCMS.',
 
-    async init(app) {
+    async init(app, HookSystem, MediaAPI, options, PluginManager) {
+        const { protect, adminMenuMiddleware } = options;
         const adminRouter = express.Router();
-        const { protect, authorize } = require('../../src/middlewares/authMiddleware');
+        const { authorize } = require('../../src/middlewares/authMiddleware');
 
-        // Middleware for admin access
+        // Middleware for admin access & Plugin Status Check
         adminRouter.use(protect);
         adminRouter.use(authorize('admin'));
+        adminRouter.use((req, res, next) => {
+            if (!PluginManager.isPluginActive('page-builder')) {
+                return res.status(403).send('Plugin is disabled');
+            }
+            next();
+        });
 
         // Admin Routes
         adminRouter.get('/:id', async (req, res) => {
@@ -32,7 +39,7 @@ module.exports = {
 
                 res.render('builder', { page, pages });
 
-                // Restore original views after render (standard pattern for our plugins)
+                // Restore original views after render
                 app.set('views', originalViews);
             } catch (err) {
                 console.error(err);
@@ -46,7 +53,7 @@ module.exports = {
                 const { blocks, content } = req.body;
                 await Page.findByIdAndUpdate(req.params.id, {
                     blocks,
-                    content // We still save HTML for SEO/compatibility
+                    content
                 });
                 res.json({ success: true, message: 'Page saved successfully' });
             } catch (err) {
@@ -57,11 +64,8 @@ module.exports = {
 
         app.use('/admin/page-builder', adminRouter);
 
-        // Serve static files for the builder
+        // Serve static files
         app.use('/page-builder-assets', express.static(path.join(__dirname, 'public')));
-
-        // --- Frontend Integration ---
-        const HookSystem = require('../../src/core/HookSystem');
 
         // Block Renderer (Server-side)
         const renderBlocks = async (blocks) => {
@@ -158,6 +162,8 @@ module.exports = {
 
         // Register Filter
         HookSystem.addFilter('page_content', async (content, page) => {
+            // if (!PluginManager.isPluginActive('page-builder')) return content; // Allow rendering even if deactivated (for session persistence)
+
             if (page.blocks && page.blocks.length > 0) {
                 const blockHtml = await renderBlocks(page.blocks);
                 return blockHtml || content;
