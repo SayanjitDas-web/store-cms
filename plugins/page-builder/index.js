@@ -37,10 +37,12 @@ module.exports = {
                     ...(Array.isArray(originalViews) ? originalViews : [originalViews])
                 ]);
 
-                res.render('builder', { page, pages });
+                const builderScripts = await HookSystem.applyFilter('builder_scripts', '');
+                res.render('builder', { page, pages, builderScripts });
 
                 // Restore original views after render
                 app.set('views', originalViews);
+
             } catch (err) {
                 console.error(err);
                 res.status(500).send('Error loading page builder');
@@ -76,19 +78,29 @@ module.exports = {
             try { Product = mongoose.model('Product'); } catch (e) { }
 
             // Registry of Block Renderers
-            const registry = {
-                hero: (data) => `
-                    <section class="relative bg-gray-900 text-white py-24 px-12 overflow-hidden">
-                        <div class="absolute inset-0 opacity-40">
-                            <img src="${data.image}" class="w-full h-full object-cover">
-                        </div>
-                        <div class="relative z-10 max-w-2xl">
-                            <h1 class="text-5xl font-extrabold mb-6">${data.title}</h1>
-                            <p class="text-xl mb-8 text-gray-300">${data.subtitle}</p>
-                            <a href="${data.buttonUrl || '#'}" class="inline-block bg-indigo-600 px-8 py-3 rounded-full font-bold hover:bg-indigo-700 transition-colors">${data.buttonText}</a>
-                        </div>
-                    </section>
-                `,
+            let registry = {
+                hero: (data) => {
+                    const align = data.align || 'center';
+                    const alignClass = align === 'center' ? 'mx-auto' : (align === 'right' ? 'ml-auto' : '');
+                    const textAlign = `text-${align}`;
+                    const textColor = data.textColor || 'white';
+                    const opacityValue = (data.opacity !== undefined ? data.opacity : 40);
+                    const opacity = opacityValue / 100;
+
+                    return `
+                        <section class="relative bg-gray-900 text-${textColor} py-24 px-12 overflow-hidden">
+                            <div class="absolute inset-0" style="opacity: ${opacity}">
+                                <img src="${data.image}" class="w-full h-full object-cover">
+                            </div>
+                            <div class="relative z-10 max-w-2xl ${alignClass} ${textAlign}">
+                                <h1 class="text-5xl font-extrabold mb-6">${data.title}</h1>
+                                <p class="text-xl mb-8 opacity-90 font-light">${data.subtitle}</p>
+                                <a href="${data.buttonUrl || '#'}" class="inline-block bg-indigo-600 px-8 py-3 rounded-full font-bold hover:bg-indigo-700 transition-colors">${data.buttonText}</a>
+                            </div>
+                        </section>
+                    `;
+                },
+
                 text: (data) => `
                     <div class="py-12 px-12 bg-white">
                         <div class="prose max-w-none">${data.content}</div>
@@ -151,6 +163,9 @@ module.exports = {
                 }
             };
 
+            // Allow other plugins to extend the block registry
+            registry = await HookSystem.applyFilter('page_builder_blocks', registry);
+
             const htmlChunks = await Promise.all(blocks.map(async (b) => {
                 const renderer = registry[b.type];
                 if (!renderer) return '';
@@ -159,6 +174,7 @@ module.exports = {
 
             return htmlChunks.join('');
         };
+
 
         // Register Filter
         HookSystem.addFilter('page_content', async (content, page) => {
